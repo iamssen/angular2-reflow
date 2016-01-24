@@ -28,8 +28,8 @@ export class ContextFactory {
   }
 
   protected mapCommand(eventType:string,
-             commands:reflow.Command[]|reflow.CommandFlowFactory,
-             avoidRunSameCommand:boolean = false) {
+                       commands:reflow.Command[]|reflow.CommandFlowFactory,
+                       avoidRunSameCommand:boolean = false) {
     this.commandMapSettings.push({
       eventType,
       commands: (commands instanceof Array) ? new Commands(commands) : commands as reflow.CommandFlowFactory,
@@ -51,17 +51,15 @@ class Context implements reflow.Context {
   private commandMap:CommandMap;
 
   constructor(@Inject(Injector) private injector:Injector,
-        @Inject(reflow.EVENT_BUS) private eventBus:EventBus,
-        @Inject(__commandMapSettings__) private commandMapSettings:CommandMapSetting[]) {
+              @Inject(reflow.EVENT_BUS) private eventBus:EventBus,
+              @Inject(__commandMapSettings__) private commandMapSettings:CommandMapSetting[]) {
   }
 
   start() {
-    console.log('reflow.ts..start()');
     this.commandMap = new CommandMap(this.eventBus, this.injector, this.commandMapSettings);
   }
 
   destroy() {
-    console.log('reflow.ts..destroy()');
     this.commandMap.destroy();
     this.eventBus.destroy();
 
@@ -104,9 +102,9 @@ class CommandChain implements reflow.CommandChain {
   private _currentCommand:reflow.Command;
 
   constructor(private _event:{type:string},
-        private injector:Injector,
-        private commands:reflow.CommandFlow,
-        private deconstructCallback:Function) {
+              private injector:Injector,
+              private commands:reflow.CommandFlow,
+              private deconstructCallback:Function) {
   }
 
   get event() {
@@ -160,8 +158,8 @@ class CommandMap {
   progressingCommandChains:reflow.CommandChain[];
 
   constructor(private eventBus:reflow.EventBus,
-        private injector:Injector,
-        commandMapSettings:CommandMapSetting[]) {
+              private injector:Injector,
+              commandMapSettings:CommandMapSetting[]) {
     this.commandInfos = {};
     this.progressingCommandChains = [];
     commandMapSettings.forEach(setting => {
@@ -198,10 +196,10 @@ class CommandMap {
     }
 
     let commandChain:CommandChain = new CommandChain(
-      event,
-      this.injector,
-      commandInfo.commands.get(),
-      this.commandChainDeconstructed.bind(this)
+        event,
+        this.injector,
+        commandInfo.commands.get(),
+        this.commandChainDeconstructed.bind(this)
     );
 
     this.progressingCommandChains.push(commandChain);
@@ -229,10 +227,12 @@ class CommandMap {
 }
 
 class EventBus implements reflow.EventBus {
+  private static dispatchers:Set<EventDispatcher> = new Set<EventDispatcher>();
   private dispatcher:EventDispatcher;
 
   constructor() {
     this.dispatcher = new EventDispatcher;
+    EventBus.dispatchers.add(this.dispatcher);
   }
 
   addEventListener(eventType:string, listener:(event)=>void):reflow.EventListener {
@@ -243,15 +243,20 @@ class EventBus implements reflow.EventBus {
     return this.addEventListener(eventType, listener);
   }
 
-  dispatchEvent(event) {
-    this.dispatcher.dispatchEvent(event);
+  dispatchEvent(event, toGlobal:boolean = false) {
+    if (toGlobal) {
+      EventBus.dispatchers.forEach(dispatcher => dispatcher.dispatchEvent(event));
+    } else {
+      this.dispatcher.dispatchEvent(event);
+    }
   }
 
-  fire(event) {
-    this.dispatchEvent(event);
+  fire(event, toGlobal:boolean = false) {
+    this.dispatchEvent(event, toGlobal);
   }
 
   destroy() {
+    EventBus.dispatchers.delete(this.dispatcher);
     this.dispatcher.destroy();
     this.dispatcher = null;
   }
@@ -359,8 +364,8 @@ class EventListener implements reflow.EventListener {
   }
 
   constructor(private _type:string,
-        private _listener:(event) => void,
-        private _collection:EventCollection) {
+              private _listener:(event) => void,
+              private _collection:EventCollection) {
   }
 
   remove():void {

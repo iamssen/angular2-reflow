@@ -12,8 +12,8 @@ export interface EventListener {
 export interface EventBus {
     addEventListener(eventType: string, listener: (event) => void): EventListener;
     on(eventType: string, listener: (event) => void): EventListener;
-    dispatchEvent(event: any): any;
-    fire(event: any): any;
+    dispatchEvent(event: any, toGlobal: boolean): any;
+    fire(event: any, toGlobal: boolean): any;
 }
 export interface Command {
     execute(chain: CommandChain): any;

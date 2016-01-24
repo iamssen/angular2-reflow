@@ -49,7 +49,7 @@ import * as reflow from 'angular2-reflow';
 
 export class Command1 implements reflow.Command {
   constructor(@Inject('service') private service:Service
-        @Inject('model') private model:Model) {
+              @Inject('model') private model:Model) {
   }
 
   execute(chain:reflow.CommandChain) {
@@ -86,7 +86,7 @@ let factory:reflow.ContextFactory = new ContextFactory;
 })
 class Main implements OnInit, OnDestroy {
   constructor(@Inject(reflow.CONTEXT) private context:reflow.Context,
-          @Inject(reflow.EVENT_BUS) private eventBus:reflow.EventBus) {
+              @Inject(reflow.EVENT_BUS) private eventBus:reflow.EventBus) {
   }
   
   ngOnInit() {

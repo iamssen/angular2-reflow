@@ -57,11 +57,9 @@ var Context = (function () {
         this.commandMapSettings = commandMapSettings;
     }
     Context.prototype.start = function () {
-        console.log('reflow.ts..start()');
         this.commandMap = new CommandMap(this.eventBus, this.injector, this.commandMapSettings);
     };
     Context.prototype.destroy = function () {
-        console.log('reflow.ts..destroy()');
         this.commandMap.destroy();
         this.eventBus.destroy();
         this.commandMap = null;
@@ -217,6 +215,7 @@ var CommandMap = (function () {
 var EventBus = (function () {
     function EventBus() {
         this.dispatcher = new EventDispatcher;
+        EventBus.dispatchers.add(this.dispatcher);
     }
     EventBus.prototype.addEventListener = function (eventType, listener) {
         return this.dispatcher.addEventListener(eventType, listener);
@@ -224,16 +223,25 @@ var EventBus = (function () {
     EventBus.prototype.on = function (eventType, listener) {
         return this.addEventListener(eventType, listener);
     };
-    EventBus.prototype.dispatchEvent = function (event) {
-        this.dispatcher.dispatchEvent(event);
+    EventBus.prototype.dispatchEvent = function (event, toGlobal) {
+        if (toGlobal === void 0) { toGlobal = false; }
+        if (toGlobal) {
+            EventBus.dispatchers.forEach(function (dispatcher) { return dispatcher.dispatchEvent(event); });
+        }
+        else {
+            this.dispatcher.dispatchEvent(event);
+        }
     };
-    EventBus.prototype.fire = function (event) {
-        this.dispatchEvent(event);
+    EventBus.prototype.fire = function (event, toGlobal) {
+        if (toGlobal === void 0) { toGlobal = false; }
+        this.dispatchEvent(event, toGlobal);
     };
     EventBus.prototype.destroy = function () {
+        EventBus.dispatchers.delete(this.dispatcher);
         this.dispatcher.destroy();
         this.dispatcher = null;
     };
+    EventBus.dispatchers = new Set();
     return EventBus;
 })();
 var EventDispatcher = (function () {
