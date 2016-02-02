@@ -1,7 +1,7 @@
 {
   "name": "angular2-reflow",
   "description": "...",
-  "version": "0.0.4",
+  "version": "0.0.10",
   "author": {
     "name": "Lee Seoyeon",
     "email": "i@ssen.name",
@@ -12,19 +12,21 @@
     "type": "git",
     "url": "git://github.com/iamssen/angular2-reflow.git"
   },
-  "main": "dist/reflow.js",
-  "typings": "dist/reflow.d.ts",
+  "main": "dist/angular2-reflow.js",
+  "typings": "dist/angular2-reflow.d.ts",
   "scripts": {
     "build": "gulp build"
   },
   "devDependencies": {
-    "gulp": "*",
-    "gulp-clean": "*",
-    "gulp-sass": "*",
-    "gulp-tsc": "*"
+    "gulp": "latest",
+    "gulp-clean": "latest",
+    "gulp-sass": "latest",
+    "glob": "latest",
+    "typescript": "1.8.*"
   },
-  "peerDependencies": {
-    "angular2": "*",
-    "es6-shim": "*"
+  "dependencies": {
+    "es6-shim": "*",
+    "es6-promise": "*",
+    "angular2": "*"
   }
 }

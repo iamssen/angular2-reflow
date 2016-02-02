@@ -1,3 +1,4 @@
+"use strict";
 exports.CONTEXT = 'reflow:context';
 exports.EVENT_BUS = 'reflow:eventBus';
-//# sourceMappingURL=reflow.core.js.map
+//# sourceMappingURL=angular2-reflow.core.js.map

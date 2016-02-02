@@ -1,9 +1,10 @@
 'use strict';
 
-var gulp = require('gulp');
-var typescript = require('gulp-tsc');
-var sass = require('gulp-sass');
-var clean = require('gulp-clean');
+let gulp = require('gulp');
+let sass = require('gulp-sass');
+let clean = require('gulp-clean');
+let typescript = require('typescript');
+let glob = require('glob');
 
 gulp.task('clean', () => {
   return gulp
@@ -13,25 +14,59 @@ gulp.task('clean', () => {
 
 gulp.task('copy', () => {
   return gulp
-    .src(['./src/**/*', '!./src/typings/**', '!./src/**/*.ts', '!./src/**/*.scss'])
+    .src(['./src/**/*', '!./src/**/*.ts', '!./src/**/*.scss'])
     .pipe(gulp.dest('./dist'));
 })
 
-gulp.task('typescript', () => {
-  return gulp
-    .src(['./src/**/*.ts', '!./src/typings/**'])
-    .pipe(typescript({
-      module: "commonjs",
-      target: "es5",
+function tsc(options) {
+  glob('./src/**/*.ts', {}, (err, files) => {
+    let program = typescript.createProgram(files, Object.assign(options, {
+      target: typescript.ScriptTarget.ES5,
       sourceMap: true,
       removeComments: true,
       noImplicitAny: false,
-      declaration: true,
       experimentalDecorators: true,
       emitDecoratorMetadata: true
-    }))
-    .pipe(gulp.dest('./dist'));
+    }));
+
+    let emitResult = program.emit();
+    let allDiagnostics = typescript.getPreEmitDiagnostics(program).concat(emitResult.diagnostics);
+
+    allDiagnostics.forEach(diagnostic => {
+      let lineAndCharacter = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
+      let line = lineAndCharacter.line;
+      let character = lineAndCharacter.character;
+      let message = typescript.flattenDiagnosticMessageText(diagnostic.messageText, '\n');
+      console.log(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`);
+    });
+  })
+}
+
+gulp.task('build.commonjs', () => {
+  tsc({
+    module: typescript.ModuleKind.CommonJS,
+    declaration: true,
+    outDir: "./dist"
+  });
 });
+
+gulp.task('build.amd', () => {
+  tsc({
+    module: typescript.ModuleKind.AMD,
+    declaration: false,
+    outFile: "./dist/angular2-reflow.amd.js"
+  });
+});
+
+gulp.task('build.system', () => {
+  tsc({
+    module: typescript.ModuleKind.System,
+    declaration: false,
+    outFile: "./dist/angular2-reflow.system.js"
+  });
+});
+
+gulp.task('typescript', ['build.commonjs', 'build.amd', 'build.system']);
 
 gulp.task('sass', () => {
   return gulp

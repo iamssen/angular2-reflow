@@ -1,38 +1,44 @@
+/// <reference path="../typings/tsd.d.ts"/>
 import {Provider, Inject, Injector} from 'angular2/core';
-import * as reflow from './reflow.core';
+import * as rf from './angular2-reflow.core';
 
-export * from './reflow.core';
+export * from './angular2-reflow.core';
 
-const __commandMapSettings__:string = '__commandMapSettings__';
+const COMMAND_MAP_SETTINGS:string = '__commandMapSettings__';
+const PROVIDER_TOKENS:string = '__providerTokens__';
 
 export class ContextFactory {
   private _providers:Provider[];
-  private commandMapSettings:CommandMapSetting[];
+  private _commandMapSettings:CommandMapSetting[];
+  private _providerTokens:any[];
 
   get providers():Provider[] {
     return this._providers.slice();
   }
 
   constructor() {
-    this.commandMapSettings = [];
+    this._commandMapSettings = [];
+    this._providerTokens = [rf.CONTEXT, rf.EVENT_BUS];
     this._providers = [
-      new Provider(reflow.CONTEXT, {useClass: Context}),
-      new Provider(reflow.EVENT_BUS, {useClass: EventBus}),
-      new Provider(__commandMapSettings__, {useValue: this.commandMapSettings})
+      new Provider(rf.CONTEXT, {useClass: Context}),
+      new Provider(rf.EVENT_BUS, {useClass: EventBus}),
+      new Provider(COMMAND_MAP_SETTINGS, {useValue: this._commandMapSettings}),
+      new Provider(PROVIDER_TOKENS, {useValue: this._providerTokens})
     ];
     this.mapDependency();
   }
 
   protected provide(provider:Provider) {
     this._providers.push(provider);
+    this._providerTokens.push(provider.token);
   }
 
   protected mapCommand(eventType:string,
-                       commands:reflow.Command[]|reflow.CommandFlowFactory,
+                       commands:rf.Command[]|rf.CommandFlowFactory,
                        avoidRunSameCommand:boolean = false) {
-    this.commandMapSettings.push({
+    this._commandMapSettings.push({
       eventType,
-      commands: (commands instanceof Array) ? new Commands(commands) : commands as reflow.CommandFlowFactory,
+      commands: (commands instanceof Array) ? new Commands(commands) : commands as rf.CommandFlowFactory,
       avoidRunSameCommand
     });
   }
@@ -43,16 +49,17 @@ export class ContextFactory {
 
 interface CommandMapSetting {
   eventType:string;
-  commands:reflow.CommandFlowFactory;
+  commands:rf.CommandFlowFactory;
   avoidRunSameCommand:boolean;
 }
 
-class Context implements reflow.Context {
+class Context implements rf.Context {
   private commandMap:CommandMap;
 
   constructor(@Inject(Injector) private injector:Injector,
-              @Inject(reflow.EVENT_BUS) private eventBus:EventBus,
-              @Inject(__commandMapSettings__) private commandMapSettings:CommandMapSetting[]) {
+              @Inject(rf.EVENT_BUS) private eventBus:EventBus,
+              @Inject(COMMAND_MAP_SETTINGS) private commandMapSettings:CommandMapSetting[],
+              @Inject(PROVIDER_TOKENS) private providerTokens:any[]) {
   }
 
   start() {
@@ -60,29 +67,34 @@ class Context implements reflow.Context {
   }
 
   destroy() {
-    this.commandMap.destroy();
-    this.eventBus.destroy();
+    this.providerTokens
+      .map(token => this.injector.get(token))
+      .forEach(instance => {
+        if (instance.hasOwnProperty('destroy') && typeof instance['destroy'] === 'function') {
+          instance['destroy']();
+        }
+      });
 
     this.commandMap = null;
     this.eventBus = null;
   }
 }
 
-class Commands implements reflow.CommandFlowFactory {
-  constructor(private commands:reflow.Command[]) {
+class Commands implements rf.CommandFlowFactory {
+  constructor(private commands:rf.Command[]) {
     if (!commands || commands.length < 1) throw new Error('require command classes.');
   }
 
-  get():reflow.CommandFlow {
+  get():rf.CommandFlow {
     return new SequentialCommandFlow(this.commands);
   }
 }
 
-class SequentialCommandFlow implements reflow.CommandFlow {
+class SequentialCommandFlow implements rf.CommandFlow {
   f:number;
   fmax:number;
 
-  constructor(private commands:reflow.Command[]) {
+  constructor(private commands:rf.Command[]) {
     this.f = -1;
     this.fmax = commands.length;
   }
@@ -97,13 +109,13 @@ class SequentialCommandFlow implements reflow.CommandFlow {
   }
 }
 
-class CommandChain implements reflow.CommandChain {
+class CommandChain implements rf.CommandChain {
   private _sharedData:Object;
-  private _currentCommand:reflow.Command;
+  private _currentCommand:rf.Command;
 
   constructor(private _event:{type:string},
               private injector:Injector,
-              private commands:reflow.CommandFlow,
+              private commands:rf.CommandFlow,
               private deconstructCallback:Function) {
   }
 
@@ -119,7 +131,7 @@ class CommandChain implements reflow.CommandChain {
   next() {
     if (this.commands.hasNext()) {
       let CommandClass = this.commands.next();
-      let command:reflow.Command = this.injector.resolveAndInstantiate(CommandClass);
+      let command:rf.Command = this.injector.resolveAndInstantiate(CommandClass);
 
       this._currentCommand = command;
 
@@ -148,16 +160,16 @@ class CommandChain implements reflow.CommandChain {
 
 interface CommandInfo {
   eventType:string;
-  eventListener:reflow.EventListener;
-  commands:reflow.CommandFlowFactory;
+  eventListener:rf.EventListener;
+  commands:rf.CommandFlowFactory;
   avoidRunSameCommand:boolean;
 }
 
 class CommandMap {
   commandInfos:{[eventType:string]:CommandInfo};
-  progressingCommandChains:reflow.CommandChain[];
+  progressingCommandChains:rf.CommandChain[];
 
-  constructor(private eventBus:reflow.EventBus,
+  constructor(private eventBus:rf.EventBus,
               private injector:Injector,
               commandMapSettings:CommandMapSetting[]) {
     this.commandInfos = {};
@@ -167,7 +179,7 @@ class CommandMap {
     })
   }
 
-  map(eventType:string, commands:reflow.CommandFlowFactory, avoidRunSameCommand:boolean = false) {
+  map(eventType:string, commands:rf.CommandFlowFactory, avoidRunSameCommand:boolean = false) {
     if (this.commandInfos[eventType] !== undefined) throw new Error(`${eventType} is already on command map`);
 
     this.commandInfos[eventType] = {
@@ -196,24 +208,24 @@ class CommandMap {
     }
 
     let commandChain:CommandChain = new CommandChain(
-        event,
-        this.injector,
-        commandInfo.commands.get(),
-        this.commandChainDeconstructed.bind(this)
+      event,
+      this.injector,
+      commandInfo.commands.get(),
+      this.commandChainDeconstructed.bind(this)
     );
 
     this.progressingCommandChains.push(commandChain);
     commandChain.next();
   }
 
-  commandChainDeconstructed(chain:reflow.CommandChain) {
+  commandChainDeconstructed(chain:rf.CommandChain) {
     if (!this.progressingCommandChains) return;
     let index:number = this.progressingCommandChains.indexOf(chain);
     if (index > -1) this.progressingCommandChains.splice(index, 1);
   }
 
   destroy() {
-    let commandChains:reflow.CommandChain[] = this.progressingCommandChains.slice();
+    let commandChains:rf.CommandChain[] = this.progressingCommandChains.slice();
     this.progressingCommandChains = null;
 
     commandChains.forEach(commandChain => {
@@ -226,7 +238,7 @@ class CommandMap {
   }
 }
 
-class EventBus implements reflow.EventBus {
+class EventBus implements rf.EventBus {
   private static dispatchers:Set<EventDispatcher> = new Set<EventDispatcher>();
   private dispatcher:EventDispatcher;
 
@@ -235,11 +247,11 @@ class EventBus implements reflow.EventBus {
     EventBus.dispatchers.add(this.dispatcher);
   }
 
-  addEventListener(eventType:string, listener:(event)=>void):reflow.EventListener {
+  addEventListener(eventType:string, listener:(event)=>void):rf.EventListener {
     return this.dispatcher.addEventListener(eventType, listener);
   }
 
-  on(eventType:string, listener:(event)=>void):reflow.EventListener {
+  on(eventType:string, listener:(event)=>void):rf.EventListener {
     return this.addEventListener(eventType, listener);
   }
 
@@ -269,14 +281,14 @@ class EventDispatcher {
     this.collection = new EventCollection;
   }
 
-  addEventListener(type:string, listener:(event) => void):reflow.EventListener {
+  addEventListener(type:string, listener:(event) => void):rf.EventListener {
     return this.collection.add(type, listener);
   }
 
   dispatchEvent(event:{type:string}) {
-    let listeners:reflow.EventListener[] = this.collection.get(event.type);
+    let listeners:rf.EventListener[] = this.collection.get(event.type);
     if (!listeners || listeners.length === 0) return;
-    listeners.forEach((listener:reflow.EventListener) => listener.listener(event));
+    listeners.forEach((listener:rf.EventListener) => listener.listener(event));
   }
 
   destroy() {
@@ -288,20 +300,21 @@ class EventDispatcher {
 
 interface EventListenerRef {
   keys: Set<Function>;
-  map: WeakMap<Function, reflow.EventListener>;
+  map: WeakMap<Function, rf.EventListener>;
 }
 
 class EventCollection {
   private types:Map<string, EventListenerRef> = new Map<string, EventListenerRef>();
 
-  add(type:string, handler:Function):reflow.EventListener {
+  add(type:string, handler:Function):rf.EventListener {
     if (this.types.has(type) && this.types.get(type).keys.has(handler)) {
       return this.types.get(type).map.get(handler);
     }
 
     let ref:EventListenerRef;
     if (!this.types.has(type)) {
-      ref = {keys: new Set<Function>(), map: new WeakMap<Function, reflow.EventListener>()};
+      //noinspection TypeScriptValidateTypes
+      ref = {keys: new Set<Function>(), map: new WeakMap<Function, rf.EventListener>()};
       this.types.set(type, ref);
     } else {
       ref = this.types.get(type);
@@ -323,13 +336,13 @@ class EventCollection {
     }
   }
 
-  get(type:string):reflow.EventListener[] {
+  get(type:string):rf.EventListener[] {
     if (!this.types) return null;
 
-    let eventListeners:reflow.EventListener[] = [];
+    let eventListeners:rf.EventListener[] = [];
     if (this.types.has(type)) {
       let ref:EventListenerRef = this.types.get(type);
-      let map:WeakMap<Function, reflow.EventListener> = ref.map;
+      let map:WeakMap<Function, rf.EventListener> = ref.map;
       let values:Iterator<Function> = ref.keys.values();
       while (true) {
         let entry = values.next();
@@ -354,7 +367,7 @@ class EventCollection {
 
 }
 
-class EventListener implements reflow.EventListener {
+class EventListener implements rf.EventListener {
   get type():string {
     return this._type;
   }

@@ -1,3 +1,4 @@
+"use strict";
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -14,16 +15,19 @@ function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
 var core_1 = require('angular2/core');
-var reflow = require('./reflow.core');
-__export(require('./reflow.core'));
-var __commandMapSettings__ = '__commandMapSettings__';
+var rf = require('./angular2-reflow.core');
+__export(require('./angular2-reflow.core'));
+var COMMAND_MAP_SETTINGS = '__commandMapSettings__';
+var PROVIDER_TOKENS = '__providerTokens__';
 var ContextFactory = (function () {
     function ContextFactory() {
-        this.commandMapSettings = [];
+        this._commandMapSettings = [];
+        this._providerTokens = [rf.CONTEXT, rf.EVENT_BUS];
         this._providers = [
-            new core_1.Provider(reflow.CONTEXT, { useClass: Context }),
-            new core_1.Provider(reflow.EVENT_BUS, { useClass: EventBus }),
-            new core_1.Provider(__commandMapSettings__, { useValue: this.commandMapSettings })
+            new core_1.Provider(rf.CONTEXT, { useClass: Context }),
+            new core_1.Provider(rf.EVENT_BUS, { useClass: EventBus }),
+            new core_1.Provider(COMMAND_MAP_SETTINGS, { useValue: this._commandMapSettings }),
+            new core_1.Provider(PROVIDER_TOKENS, { useValue: this._providerTokens })
         ];
         this.mapDependency();
     }
@@ -36,10 +40,11 @@ var ContextFactory = (function () {
     });
     ContextFactory.prototype.provide = function (provider) {
         this._providers.push(provider);
+        this._providerTokens.push(provider.token);
     };
     ContextFactory.prototype.mapCommand = function (eventType, commands, avoidRunSameCommand) {
         if (avoidRunSameCommand === void 0) { avoidRunSameCommand = false; }
-        this.commandMapSettings.push({
+        this._commandMapSettings.push({
             eventType: eventType,
             commands: (commands instanceof Array) ? new Commands(commands) : commands,
             avoidRunSameCommand: avoidRunSameCommand
@@ -48,31 +53,39 @@ var ContextFactory = (function () {
     ContextFactory.prototype.mapDependency = function () {
     };
     return ContextFactory;
-})();
+}());
 exports.ContextFactory = ContextFactory;
 var Context = (function () {
-    function Context(injector, eventBus, commandMapSettings) {
+    function Context(injector, eventBus, commandMapSettings, providerTokens) {
         this.injector = injector;
         this.eventBus = eventBus;
         this.commandMapSettings = commandMapSettings;
+        this.providerTokens = providerTokens;
     }
     Context.prototype.start = function () {
         this.commandMap = new CommandMap(this.eventBus, this.injector, this.commandMapSettings);
     };
     Context.prototype.destroy = function () {
-        this.commandMap.destroy();
-        this.eventBus.destroy();
+        var _this = this;
+        this.providerTokens
+            .map(function (token) { return _this.injector.get(token); })
+            .forEach(function (instance) {
+            if (instance.hasOwnProperty('destroy') && typeof instance['destroy'] === 'function') {
+                instance['destroy']();
+            }
+        });
         this.commandMap = null;
         this.eventBus = null;
     };
     Context = __decorate([
         __param(0, core_1.Inject(core_1.Injector)),
-        __param(1, core_1.Inject(reflow.EVENT_BUS)),
-        __param(2, core_1.Inject(__commandMapSettings__)), 
-        __metadata('design:paramtypes', [core_1.Injector, EventBus, Array])
+        __param(1, core_1.Inject(rf.EVENT_BUS)),
+        __param(2, core_1.Inject(COMMAND_MAP_SETTINGS)),
+        __param(3, core_1.Inject(PROVIDER_TOKENS)), 
+        __metadata('design:paramtypes', [core_1.Injector, EventBus, Array, Array])
     ], Context);
     return Context;
-})();
+}());
 var Commands = (function () {
     function Commands(commands) {
         this.commands = commands;
@@ -83,7 +96,7 @@ var Commands = (function () {
         return new SequentialCommandFlow(this.commands);
     };
     return Commands;
-})();
+}());
 var SequentialCommandFlow = (function () {
     function SequentialCommandFlow(commands) {
         this.commands = commands;
@@ -99,7 +112,7 @@ var SequentialCommandFlow = (function () {
         return null;
     };
     return SequentialCommandFlow;
-})();
+}());
 var CommandChain = (function () {
     function CommandChain(_event, injector, commands, deconstructCallback) {
         this._event = _event;
@@ -150,7 +163,7 @@ var CommandChain = (function () {
         this.commands = null;
     };
     return CommandChain;
-})();
+}());
 var CommandMap = (function () {
     function CommandMap(eventBus, injector, commandMapSettings) {
         var _this = this;
@@ -211,7 +224,7 @@ var CommandMap = (function () {
         this.injector = null;
     };
     return CommandMap;
-})();
+}());
 var EventBus = (function () {
     function EventBus() {
         this.dispatcher = new EventDispatcher;
@@ -243,7 +256,7 @@ var EventBus = (function () {
     };
     EventBus.dispatchers = new Set();
     return EventBus;
-})();
+}());
 var EventDispatcher = (function () {
     function EventDispatcher() {
         this.collection = new EventCollection;
@@ -262,7 +275,7 @@ var EventDispatcher = (function () {
         this.collection = null;
     };
     return EventDispatcher;
-})();
+}());
 var EventCollection = (function () {
     function EventCollection() {
         this.types = new Map();
@@ -323,7 +336,7 @@ var EventCollection = (function () {
         this.types = null;
     };
     return EventCollection;
-})();
+}());
 var EventListener = (function () {
     function EventListener(_type, _listener, _collection) {
         this._type = _type;
@@ -352,5 +365,5 @@ var EventListener = (function () {
         this._collection = null;
     };
     return EventListener;
-})();
-//# sourceMappingURL=reflow.js.map
+}());
+//# sourceMappingURL=angular2-reflow.js.map
