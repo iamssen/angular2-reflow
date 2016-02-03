@@ -1,5 +1,6 @@
 /// <reference path="../typings/tsd.d.ts"/>
 import {Provider, Inject, Injector} from 'angular2/core';
+import {Observable, Subject} from 'rxjs';
 import * as rf from './angular2-reflow.core';
 
 export * from './angular2-reflow.core';
@@ -255,6 +256,10 @@ class EventBus implements rf.EventBus {
     return this.addEventListener(eventType, listener);
   }
 
+  observe(eventType:string):rf.EventObserver {
+    return this.dispatcher.observe(eventType);
+  }
+
   dispatchEvent(event, toGlobal:boolean = false) {
     if (toGlobal) {
       EventBus.dispatchers.forEach(dispatcher => dispatcher.dispatchEvent(event));
@@ -291,12 +296,15 @@ class EventDispatcher {
     listeners.forEach((listener:rf.EventListener) => listener.listener(event));
   }
 
+  observe(type:string):rf.EventObserver {
+    return new EventObserver(type, this.collection);
+  }
+
   destroy() {
     this.collection.destroy();
     this.collection = null;
   }
 }
-
 
 interface EventListenerRef {
   keys: Set<Function>;
@@ -364,7 +372,36 @@ class EventCollection {
     this.types.clear();
     this.types = null;
   }
+}
 
+class EventObserver implements rf.EventObserver {
+  private listener:rf.EventListener;
+  private subject:Subject<any>;
+
+  get type():string {
+    return this._type;
+  }
+
+  constructor(private _type:string,
+              private _collection:EventCollection) {
+    this.listener = _collection.add(_type, this.handler.bind(this));
+    this.subject = new Subject<any>();
+  }
+
+  handler(event) {
+    if (this.subject) this.subject.next(event);
+  }
+
+  observe():Observable<any> {
+    return this.subject;
+  }
+
+  destroy() {
+    this.subject.unsubscribe();
+    this.listener.remove();
+    this.subject = null;
+    this.listener = null;
+  }
 }
 
 class EventListener implements rf.EventListener {
@@ -387,5 +424,9 @@ class EventListener implements rf.EventListener {
     this._type = null;
     this._listener = null;
     this._collection = null;
+  }
+
+  destroy() {
+    this.remove();
   }
 }

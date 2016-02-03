@@ -15,6 +15,7 @@ function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
 var core_1 = require('angular2/core');
+var rxjs_1 = require('rxjs');
 var rf = require('./angular2-reflow.core');
 __export(require('./angular2-reflow.core'));
 var COMMAND_MAP_SETTINGS = '__commandMapSettings__';
@@ -236,6 +237,9 @@ var EventBus = (function () {
     EventBus.prototype.on = function (eventType, listener) {
         return this.addEventListener(eventType, listener);
     };
+    EventBus.prototype.observe = function (eventType) {
+        return this.dispatcher.observe(eventType);
+    };
     EventBus.prototype.dispatchEvent = function (event, toGlobal) {
         if (toGlobal === void 0) { toGlobal = false; }
         if (toGlobal) {
@@ -269,6 +273,9 @@ var EventDispatcher = (function () {
         if (!listeners || listeners.length === 0)
             return;
         listeners.forEach(function (listener) { return listener.listener(event); });
+    };
+    EventDispatcher.prototype.observe = function (type) {
+        return new EventObserver(type, this.collection);
     };
     EventDispatcher.prototype.destroy = function () {
         this.collection.destroy();
@@ -337,6 +344,35 @@ var EventCollection = (function () {
     };
     return EventCollection;
 }());
+var EventObserver = (function () {
+    function EventObserver(_type, _collection) {
+        this._type = _type;
+        this._collection = _collection;
+        this.listener = _collection.add(_type, this.handler.bind(this));
+        this.subject = new rxjs_1.Subject();
+    }
+    Object.defineProperty(EventObserver.prototype, "type", {
+        get: function () {
+            return this._type;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    EventObserver.prototype.handler = function (event) {
+        if (this.subject)
+            this.subject.next(event);
+    };
+    EventObserver.prototype.observe = function () {
+        return this.subject;
+    };
+    EventObserver.prototype.destroy = function () {
+        this.subject.unsubscribe();
+        this.listener.remove();
+        this.subject = null;
+        this.listener = null;
+    };
+    return EventObserver;
+}());
 var EventListener = (function () {
     function EventListener(_type, _listener, _collection) {
         this._type = _type;
@@ -363,6 +399,9 @@ var EventListener = (function () {
         this._type = null;
         this._listener = null;
         this._collection = null;
+    };
+    EventListener.prototype.destroy = function () {
+        this.remove();
     };
     return EventListener;
 }());

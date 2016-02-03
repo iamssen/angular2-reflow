@@ -1,7 +1,7 @@
 {
   "name": "angular2-reflow",
   "description": "...",
-  "version": "0.0.10",
+  "version": "0.0.12",
   "author": {
     "name": "Lee Seoyeon",
     "email": "i@ssen.name",
@@ -25,8 +25,9 @@
     "typescript": "1.8.*"
   },
   "dependencies": {
-    "es6-shim": "*",
-    "es6-promise": "*",
-    "angular2": "*"
+    "angular2": "latest",
+    "es6-promise": "latest",
+    "es6-shim": "latest",
+    "rxjs": "latest"
   }
 }

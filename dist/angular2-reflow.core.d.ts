@@ -1,3 +1,4 @@
+import { Observable } from 'rxjs';
 export declare const CONTEXT: string;
 export declare const EVENT_BUS: string;
 export interface Context {
@@ -8,10 +9,17 @@ export interface EventListener {
     type: string;
     listener: (event) => void;
     remove(): any;
+    destroy(): any;
+}
+export interface EventObserver {
+    type: string;
+    observe(): Observable<any>;
+    destroy(): any;
 }
 export interface EventBus {
     addEventListener(eventType: string, listener: (event) => void): EventListener;
     on(eventType: string, listener: (event) => void): EventListener;
+    observe(eventType: string): EventObserver;
     dispatchEvent(event: any, toGlobal?: boolean): any;
     fire(event: any, toGlobal?: boolean): any;
 }

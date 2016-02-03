@@ -21,10 +21,10 @@ System.register("angular2-reflow.core", [], function(exports_1) {
         }
     }
 });
-System.register("angular2-reflow", ['angular2/core', "angular2-reflow.core"], function(exports_2) {
+System.register("angular2-reflow", ['angular2/core', 'rxjs', "angular2-reflow.core"], function(exports_2) {
     "use strict";
-    var core_1, rf;
-    var COMMAND_MAP_SETTINGS, PROVIDER_TOKENS, ContextFactory, Context, Commands, SequentialCommandFlow, CommandChain, CommandMap, EventBus, EventDispatcher, EventCollection, EventListener;
+    var core_1, rxjs_1, rf;
+    var COMMAND_MAP_SETTINGS, PROVIDER_TOKENS, ContextFactory, Context, Commands, SequentialCommandFlow, CommandChain, CommandMap, EventBus, EventDispatcher, EventCollection, EventObserver, EventListener;
     var exportedNames_1 = {
         'ContextFactory': true
     };
@@ -39,6 +39,9 @@ System.register("angular2-reflow", ['angular2/core', "angular2-reflow.core"], fu
         setters:[
             function (core_1_1) {
                 core_1 = core_1_1;
+            },
+            function (rxjs_1_1) {
+                rxjs_1 = rxjs_1_1;
             },
             function (rf_1) {
                 rf = rf_1;
@@ -265,6 +268,9 @@ System.register("angular2-reflow", ['angular2/core', "angular2-reflow.core"], fu
                 EventBus.prototype.on = function (eventType, listener) {
                     return this.addEventListener(eventType, listener);
                 };
+                EventBus.prototype.observe = function (eventType) {
+                    return this.dispatcher.observe(eventType);
+                };
                 EventBus.prototype.dispatchEvent = function (event, toGlobal) {
                     if (toGlobal === void 0) { toGlobal = false; }
                     if (toGlobal) {
@@ -298,6 +304,9 @@ System.register("angular2-reflow", ['angular2/core', "angular2-reflow.core"], fu
                     if (!listeners || listeners.length === 0)
                         return;
                     listeners.forEach(function (listener) { return listener.listener(event); });
+                };
+                EventDispatcher.prototype.observe = function (type) {
+                    return new EventObserver(type, this.collection);
                 };
                 EventDispatcher.prototype.destroy = function () {
                     this.collection.destroy();
@@ -366,6 +375,35 @@ System.register("angular2-reflow", ['angular2/core', "angular2-reflow.core"], fu
                 };
                 return EventCollection;
             }());
+            EventObserver = (function () {
+                function EventObserver(_type, _collection) {
+                    this._type = _type;
+                    this._collection = _collection;
+                    this.listener = _collection.add(_type, this.handler.bind(this));
+                    this.subject = new rxjs_1.Subject();
+                }
+                Object.defineProperty(EventObserver.prototype, "type", {
+                    get: function () {
+                        return this._type;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                EventObserver.prototype.handler = function (event) {
+                    if (this.subject)
+                        this.subject.next(event);
+                };
+                EventObserver.prototype.observe = function () {
+                    return this.subject;
+                };
+                EventObserver.prototype.destroy = function () {
+                    this.subject.unsubscribe();
+                    this.listener.remove();
+                    this.subject = null;
+                    this.listener = null;
+                };
+                return EventObserver;
+            }());
             EventListener = (function () {
                 function EventListener(_type, _listener, _collection) {
                     this._type = _type;
@@ -392,6 +430,9 @@ System.register("angular2-reflow", ['angular2/core', "angular2-reflow.core"], fu
                     this._type = null;
                     this._listener = null;
                     this._collection = null;
+                };
+                EventListener.prototype.destroy = function () {
+                    this.remove();
                 };
                 return EventListener;
             }());
