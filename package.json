@@ -1,7 +1,7 @@
 {
   "name": "angular2-reflow",
   "description": "...",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "author": {
     "name": "Lee Seoyeon",
     "email": "i@ssen.name",
@@ -15,7 +15,7 @@
   "main": "dist/angular2-reflow.js",
   "typings": "dist/angular2-reflow.d.ts",
   "scripts": {
-    "build": "gulp build"
+    "build": "rimraf dist & gulp build"
   },
   "devDependencies": {
     "gulp": "latest",

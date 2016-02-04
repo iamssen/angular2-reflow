@@ -1,5 +1,5 @@
 /// <reference path="../typings/tsd.d.ts"/>
-import {Provider, Inject, Injector} from 'angular2/core';
+import {Provider, Inject, Injector, Injectable} from 'angular2/core';
 import {Observable, Subject} from 'rxjs';
 import * as rf from './angular2-reflow.core';
 
@@ -54,6 +54,7 @@ interface CommandMapSetting {
   avoidRunSameCommand:boolean;
 }
 
+@Injectable()
 class Context implements rf.Context {
   private commandMap:CommandMap;
 
@@ -239,6 +240,7 @@ class CommandMap {
   }
 }
 
+@Injectable()
 class EventBus implements rf.EventBus {
   private static dispatchers:Set<EventDispatcher> = new Set<EventDispatcher>();
   private dispatcher:EventDispatcher;

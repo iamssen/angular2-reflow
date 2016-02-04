@@ -109,6 +109,7 @@ System.register("angular2-reflow", ['angular2/core', 'rxjs', "angular2-reflow.co
                     this.eventBus = null;
                 };
                 Context = __decorate([
+                    core_1.Injectable(),
                     __param(0, core_1.Inject(core_1.Injector)),
                     __param(1, core_1.Inject(rf.EVENT_BUS)),
                     __param(2, core_1.Inject(COMMAND_MAP_SETTINGS)),
@@ -290,6 +291,10 @@ System.register("angular2-reflow", ['angular2/core', 'rxjs', "angular2-reflow.co
                     this.dispatcher = null;
                 };
                 EventBus.dispatchers = new Set();
+                EventBus = __decorate([
+                    core_1.Injectable(), 
+                    __metadata('design:paramtypes', [])
+                ], EventBus);
                 return EventBus;
             }());
             EventDispatcher = (function () {
